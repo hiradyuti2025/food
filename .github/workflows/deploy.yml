@@ -27,7 +27,7 @@ jobs:
       - name: Build the site folder
         run: |
           mkdir _site
-          cp "Scrap Nexus_ food waste tracker.html" _site/index.html
+          cp index.html _site/index.html
 
       - name: Set up Pages
         uses: actions/configure-pages@v5
