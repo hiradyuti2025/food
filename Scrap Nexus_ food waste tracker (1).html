@@ -1,0 +1,307 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Scrap Nexus: New Jersey food waste tracker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<style>
+:root{--bg:#f3f5f7;--surf:#fff;--ink:#14232e;--mut:#5d6b77;--line:#e1e6eb;--acc:#0f6b5c;--bad:#b4443c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e171d;--surf:#15222b;--ink:#e8eef2;--mut:#8fa1ad;--line:#243541;--acc:#4fc3a8;--bad:#e8857d}}
+:root[data-theme=dark]{--bg:#0e171d;--surf:#15222b;--ink:#e8eef2;--mut:#8fa1ad;--line:#243541;--acc:#4fc3a8;--bad:#e8857d}
+html{scroll-padding-top:64px;scroll-behavior:smooth}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 14px/1.45 Inter,system-ui,-apple-system,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 18px 40px}
+h1{font-size:clamp(24px,4vw,32px);font-weight:700;letter-spacing:-.02em;margin:0;line-height:1.05}
+h2{font-size:13px;font-weight:600;margin:0 0 10px;color:var(--mut)}
+h3{font-size:18px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.top{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:end;margin-bottom:12px}
+.sub{color:var(--mut);margin:6px 0 0;max-width:62ch;font-size:14px}
+nav{position:sticky;top:0;z-index:1000;background:var(--bg);border-bottom:1px solid var(--line);margin:0 -18px 16px;padding:8px 18px;display:flex;gap:4px;flex-wrap:wrap}
+nav a{color:var(--ink);text-decoration:none;font-weight:500;font-size:13px;padding:6px 12px;border-radius:8px}nav a:hover{background:var(--surf)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;background:var(--surf)}
+.seg button{border:0;background:none;color:var(--ink);font:inherit;font-weight:500;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin-bottom:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);color:var(--ink);background:var(--surf);font:inherit;font-size:12.5px;font-weight:500;padding:3px 10px;border-radius:999px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.chip:before{content:'';width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip[aria-pressed=true]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}.chip[aria-pressed=false]{opacity:.55}
+.yr{display:flex;align-items:center;gap:10px}.yr b{font-size:22px;min-width:3ch}
+input[type=range]{accent-color:var(--acc)}
+.play,.btn{border:1px solid var(--line);background:var(--surf);color:var(--ink);border-radius:8px;padding:6px 11px;cursor:pointer;font:inherit;font-weight:500}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:860px){.grid,.two{grid-template-columns:1fr}}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(16,35,46,.06);min-width:0}
+section{margin-top:22px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.stat b{display:block;font-size:24px;font-weight:700;letter-spacing:-.02em}.stat small{color:var(--mut)}
+#lmap{height:560px;border-radius:10px;z-index:0;background:var(--bg)}
+@media(max-width:860px){#lmap{height:440px}}
+.leaflet-container{font:inherit}
+.leaflet-tooltip{font:inherit;font-size:12.5px}
+.tiles{display:grid;gap:5px}
+.tile{border:0;border-radius:6px;aspect-ratio:1.15;padding:4px;font:inherit;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;text-align:left;min-width:0;overflow:hidden}
+.tile span{font-size:clamp(9px,1.5vw,12px);font-weight:600;line-height:1.1}.tile i{font-style:normal;font-size:clamp(9px,1.4vw,12px);opacity:.85}
+.tile[aria-pressed=true]{outline:3px solid var(--ink);outline-offset:1px}
+.legend{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--mut)}.legend div{flex:1;height:8px;border-radius:4px}
+.big{font-size:clamp(34px,6vw,52px);font-weight:700;letter-spacing:-.03em;line-height:1}
+.stack{display:flex;height:14px;border-radius:4px;overflow:hidden;margin:10px 0 8px;background:var(--line)}
+.kv{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mut)}.kv span:before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:4px}
+.rank{display:grid;grid-template-columns:110px 1fr 62px;gap:8px;align-items:center;font-size:13px;padding:3px 0;border:0;background:none;color:var(--ink);font-family:inherit;width:100%;cursor:pointer;text-align:left}
+.rank u{display:block;height:9px;border-radius:3px;text-decoration:none}.rank b{text-align:right;font-weight:600}
+.pair{display:flex;gap:22px;flex-wrap:wrap;margin-top:10px}.pair div b{display:block;font-size:24px;font-weight:700}.pair small{color:var(--mut)}
+form.lf{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:860px){form.lf{grid-template-columns:1fr 1fr}}
+form.lf label,.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:500;color:var(--mut)}
+.wide{grid-column:span 2}
+select,input[type=number],input[type=date],input[type=text]{font:inherit;font-size:14px;padding:7px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;width:100%}
+.go{background:var(--acc);color:var(--bg);border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+.note{font-size:12px;color:var(--mut);margin:10px 0 0}
+.up{display:inline-block;padding:7px 12px;border:1px dashed var(--acc);color:var(--acc);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}
+.fac{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}.fac .chips{margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12px;color:var(--mut);font-weight:600}
+td.n,th.n{text-align:right}.tbl{overflow-x:auto;max-height:360px;overflow-y:auto;margin-top:10px}
+.x{border:0;background:none;color:var(--mut);cursor:pointer;font:inherit;font-size:16px;line-height:1;padding:2px 6px;border-radius:6px}.x:hover{color:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.res{list-style:none;margin:10px 0 0;padding:0;max-height:330px;overflow-y:auto}.res li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.dot{flex:none;width:10px;height:10px;border-radius:50%;margin-top:4px;background:var(--c)}
+.res button{border:0;background:none;padding:0;color:var(--ink);font:inherit;font-weight:600;cursor:pointer;text-align:left}.res small{display:block;color:var(--mut)}
+.callout{border-left:3px solid var(--acc);padding:10px 12px;background:var(--bg);border-radius:0 8px 8px 0;margin-top:12px}
+.callout.warn{border-color:var(--bad)}
+.scale{display:grid;gap:4px;margin-top:8px}.scale div{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:6px;font-size:13px;background:color-mix(in srgb,var(--c) 22%,transparent)}
+.scale small{color:var(--mut)}
+</style></head><body><div class="wrap">
+<div class="top"><div><h1>Scrap Nexus</h1><p class="sub" id="sub"></p></div>
+<div class="seg" role="group" aria-label="Region scope"><button data-s="nj" aria-pressed="true">New Jersey</button><button data-s="world" aria-pressed="false">World</button></div></div>
+<nav aria-label="Sections"><a href="#dash">Dashboard</a><a href="#disposal" class="njo">Disposal</a><a href="#log" class="njo">Log waste</a><a href="#drop" class="njo">Drop-off sites</a><a href="#law" class="njo">NJ law &amp; goals</a></nav>
+
+<div id="dash">
+<div class="stats" id="stats"></div>
+<div class="bar"><div class="seg" role="group" aria-label="Metric" id="mseg"><button data-m="t" aria-pressed="true">Tons</button><button data-m="p" aria-pressed="false">Per person</button><button data-m="c" aria-pressed="false">Est. cost</button><button data-m="d" aria-pressed="false" class="njo">Recovery rate</button><button data-m="r" aria-pressed="false" class="njo">My reports</button></div><div class="seg njo" id="vseg" role="group" aria-label="Map style"><button data-v="geo" aria-pressed="true">Map</button><button data-v="tile" aria-pressed="false">Tiles</button></div>
+<div class="yr"><button class="play" id="play" aria-label="Play years">Play</button><input type="range" id="yr" min="0" max="6" value="6" aria-label="Year"><b id="yl"></b></div></div>
+<div class="chips" id="chips" style="margin-bottom:16px"></div>
+<div class="grid"><div class="card"><h2 id="mt"></h2><div id="lmap" role="region" aria-label="Interactive New Jersey county map"></div><div class="tiles" id="tiles"></div><p class="note" id="mapnote" hidden></p><div class="legend"><span id="lo"></span><div id="ramp"></div><span id="hi"></span></div>
+<div class="fac njo" id="fac"><div class="row"><span style="font-weight:600;font-size:13px">Map layers</span></div><div class="chips" id="rlay"></div><div class="chips" id="lay"></div><div class="row" style="margin-top:10px"><label class="up">Load NJDEP facility files (CSV or GeoJSON)<input type="file" id="file" accept=".csv,.geojson,.json" multiple hidden></label></div><p class="note" id="fn">Download layers from the NJDEP open-data portal, then load them here. Files need latitude/longitude (or X/Y) columns. Nothing is uploaded; files are read in your browser.</p></div></div>
+<div class="card" id="det"></div>
+<div class="card"><h2>Ranking</h2><div id="rk"></div></div>
+<div class="card"><h2>What if we cut waste?</h2><label>Reduction: <b id="rv">20%</b> <input type="range" id="red" min="0" max="60" value="20" aria-label="Reduction percent"></label><div class="pair" id="wi"></div></div>
+</div></div>
+
+<section id="disposal" class="njo"><div class="two">
+<div class="card"><h3>Where New Jersey’s food waste goes</h3><p class="sub" style="margin-top:0">Modeled statewide disposal mix for <span id="dyr"></span>, plus the mix from reports logged in this browser.</p><div id="dstate"></div></div>
+<div class="card"><h3>The Wasted Food Scale</h3><p class="sub" style="margin-top:0">EPA ranks options from most to least preferred. The higher up the scale food goes, the more value it keeps.</p><div class="scale" id="scale"></div></div>
+</div></section>
+
+<section id="log" class="njo"><div class="card"><h3>Log food waste</h3><p class="sub" style="margin-top:0">Record what was thrown out and how it was disposed of. Reports are saved only in this browser. Use <b>Export CSV</b> to keep or share them.</p>
+<form class="lf" id="lf" style="margin-top:14px">
+<label>Date<input type="date" id="ld" required></label>
+<label>County<select id="lr"></select></label>
+<label>Source<select id="ls"></select></label>
+<label>Food category<select id="lc"></select></label>
+<label>Amount<input type="number" id="la" min="0.01" step="0.01" placeholder="e.g. 25" required></label>
+<label>Unit<select id="lu"><option value="lb">pounds</option><option value="kg">kilograms</option><option value="t">tonnes</option></select></label>
+<label class="wide">Disposal method<select id="lm"></select></label>
+<label class="wide" style="grid-column:1/-2">Note (optional)<input type="text" id="ln" maxlength="140" placeholder="e.g. cafeteria lunch trays, expired produce"></label>
+<div style="display:flex;align-items:end"><button class="go" style="width:100%">Add report</button></div>
+</form>
+<div class="stats" id="lstats" style="margin:16px 0 0"></div>
+<div class="row" style="margin-top:12px;justify-content:space-between"><div class="row"><label class="fld" style="flex-direction:row;align-items:center;gap:6px">Show <select id="lfc" style="width:auto"></select></label></div><div class="row"><button class="btn" id="exp">Export CSV</button><label class="btn" style="cursor:pointer">Import CSV<input type="file" id="imp" accept=".csv" hidden></label><button class="btn" id="clr">Clear all</button></div></div>
+<div class="tbl"><table><thead><tr><th>Date</th><th>County</th><th>Source</th><th>Category</th><th>Disposal</th><th class="n">Amount</th><th></th></tr></thead><tbody id="lt"></tbody></table></div><p class="note" id="lnote"></p>
+</div></section>
+
+<section id="drop" class="njo"><div class="two">
+<div class="card"><h3>Find a drop-off or recycling site</h3><p class="sub" style="margin-top:0">Food banks take surplus edible food. Composting and food-waste recycling sites take scraps. Distances are straight-line from the selected county’s center or from your location.</p>
+<div class="row" style="margin-top:10px"><button class="btn" id="geo">Use my location</button><span class="note" id="geon" style="margin:0"></span></div><ul class="res" id="res"></ul>
+<p class="note">Locations are approximate and listed as a starting point. Confirm hours and what each site accepts before you go. For the official list, see NJDEP’s food waste recycling facility map.</p></div>
+<div class="card"><h3>Ways to keep food out of the trash</h3><div class="scale" id="tips"></div></div>
+</div></section>
+
+<section id="law" class="njo"><div class="two">
+<div class="card"><h3>Am I a “large food waste generator”?</h3><p class="sub" style="margin-top:0">Under New Jersey’s Food Waste Recycling Law (P.L. 2020, c.24), businesses and institutions that make at least 52 tons of food waste a year must separate it and send it to an authorized recycling facility if one is within 25 road miles.</p>
+<div class="row" style="margin-top:12px"><label class="fld" style="flex:1">Food waste per week<input type="number" id="gw" min="0" step="1" value="1500"></label><label class="fld" style="width:120px">Unit<select id="gu"><option value="lb">pounds</option><option value="t">tons</option></select></label><label class="fld" style="width:150px">County<select id="gc"></select></label></div><div id="gout"></div></div>
+<div class="card"><h3>Progress toward the 2030 goal</h3><p class="sub" style="margin-top:0">New Jersey’s Food Waste Reduction Act (2017) sets a goal of cutting food waste 50% by 2030.</p><div id="goal"></div></div>
+</div></section>
+
+<p class="note" id="foot"></p></div>
+<script>
+const W={"Argentina":[[723,1272,290,789,0,1527,1427,957,1958,1450,928,1012,1336,748,1347,2403,1314,1385,489,1375,1528,376,2600,1383,1942,419,229,322,2626,1568,1517,1874,1111,182,898,1445,1769,234,602,960,551,875,480,2122,1055,853,549,616,948,672,1106,1152,1982,389,18,1142],110],"Australia":[[959,970,836,588,464,0,199,1607,1424,676,2315,1180,840,461,885,1673,183,645,1034,596,1671,774,1071,1488,611,1450,728,1188,306,3148,1445,375,0,857,868,1724,1831,1661,680,381,2300,471,2095,1225,1934,788,1385,292,2446,823,71,559,1341,947,247,2160],108],"Brazil":[[1622,2119,399,1686,1742,648,429,1680,1567,1558,1189,800,1651,1315,543,957,1022,1594,775,934,113,1421,1344,1933,252,799,589,942,1201,558,771,2032,1543,275,404,770,1889,0,506,1492,372,253,2207,1602,1008,1546,2536,1889,1654,927,1224,610,433,2188,393,2011],108],"Canada":[[889,1422,1297,626,662,1118,1097,918,2413,1246,1832,1059,671,895,2593,816,2190,990,1205,1180,1255,898,960,358,1454,2151,2071,834,1155,495,1364,2566,1791,987,2133,438,888,1019,883,657,1593,694,463,163,795,1691,1364,1823,1120,509,2054,788,1204,1288,1922,957],110],"China":[[1353,43,1625,937,2226,3088,1492,783,1365,238,603,774,426,1086,742,1995,1465,1056,1853,2046,771,1785,1234,905,483,1675,1196,1028,1445,1196,2076,1455,715,1504,1024,634,1392,169,812,654,979,820,293,1209,425,1140,1419,876,828,839,2069,2602,559,89,1308,1309],111],"France":[[1301,1790,1601,2315,149,402,296,1200,465,829,874,354,1150,659,1146,0,786,2368,1468,1289,287,1422,2236,909,730,919,953,1582,1174,1300,1292,2376,1073,582,1075,858,1362,1334,1186,2285,1185,1250,1616,2076,1094,1135,1513,810,768,791,2017,344,1388,824,294,865],112],"Germany":[[2144,2117,872,745,1605,430,896,1381,953,1234,998,856,2056,2266,769,1268,1974,1450,1438,550,1749,1538,605,747,660,1206,2017,2186,559,1617,1476,1089,600,1302,333,1329,488,927,729,1500,916,1975,1680,1084,1220,451,419,2346,775,1000,222,1459,1773,718,802,2100],116],"India":[[1960,2024,2333,1488,1365,810,757,1245,1487,1270,221,2813,803,360,1436,611,638,2164,1575,111,1887,1017,1761,1822,617,1301,736,1038,1224,728,285,629,1645,1287,1009,1129,1816,1209,711,502,979,2458,670,583,710,359,1427,1007,763,695,97,1184,875,799,503,1522],109],"Indonesia":[[1347,1783,2009,697,333,435,434,1117,417,1060,696,614,917,501,1162,446,862,1672,1190,2256,1069,1232,1052,1453,494,1918,1364,647,2353,829,629,1532,2375,1469,831,985,632,917,1990,466,1518,1715,1200,595,733,548,1724,2242,571,1464,1319,1625,1432,960,1113,0],105],"Italy":[[1975,1310,1214,0,682,677,1984,738,1057,39,2155,139,356,374,42,1602,268,287,803,525,508,1268,2439,642,255,1652,747,605,1905,1334,1261,965,1899,268,356,383,722,1477,393,2583,1390,1576,2534,870,1500,1717,1819,2038,618,1519,1204,1550,1865,547,1859,1580],112],"Japan":[[1702,819,60,894,69,677,2104,1349,942,2487,1652,1079,1031,1230,338,1606,581,2007,831,899,1058,659,1477,1994,888,2289,846,1025,441,2167,485,364,97,958,0,1228,1308,1287,1353,710,1721,783,1872,89,1128,888,563,916,789,1701,835,1764,605,597,745,1087],109],"Mexico":[[1081,1729,523,1777,470,1129,1524,2141,1382,517,1555,937,447,676,1191,1045,464,561,496,1696,514,1006,1060,809,840,919,64,680,1277,1837,1368,2019,844,1099,2378,1410,1443,1496,1952,1604,1387,1219,752,571,1115,936,759,1789,928,2214,2048,666,1185,523,1191,2647],110],"Russia":[[1358,1301,69,1693,336,465,784,51,714,1737,550,43,1848,1018,0,1244,1780,754,933,1446,642,390,1404,1614,981,714,1553,1098,0,670,1695,1522,328,1616,1083,79,1335,393,2598,2828,1548,639,1896,604,1001,949,1520,987,1497,789,563,738,2228,1151,1297,254],112],"Saudi Arabia":[[1102,559,1857,898,564,1139,1511,1802,572,2770,1639,453,1163,848,1133,2175,1099,295,754,1257,614,1222,445,2547,560,911,1150,1291,487,244,1338,1189,349,1711,511,375,165,1291,571,112,2690,612,973,1022,777,444,1304,1193,1802,457,2444,748,1585,1301,837,972],115],"South Africa":[[1015,1019,1141,483,2126,709,1289,593,1122,1016,840,569,911,2482,886,1576,1033,1472,823,1074,595,858,767,814,1378,1800,416,1532,1307,1767,2172,260,496,1594,0,537,1829,931,759,831,1514,1451,396,1213,989,895,760,835,1557,935,1336,651,1064,1368,1178,1600],108],"South Korea":[[482,1601,416,540,985,1219,655,1122,568,472,2691,2181,916,490,155,1844,655,1788,220,1264,863,1491,741,359,854,1391,848,1063,2776,1290,111,832,458,1074,1025,1675,934,1328,504,903,1069,1197,701,1335,1075,274,409,1032,973,252,1402,1021,1276,1356,688,1247],113],"Spain":[[707,1054,1294,1186,598,806,2147,765,616,1151,782,856,1676,1449,1692,1640,1162,1451,1323,1114,1072,1741,876,1810,1197,769,926,1520,1297,2054,1253,1980,1904,163,1528,516,2083,319,0,1416,838,1820,884,1408,893,1394,625,2293,928,1376,359,2871,603,444,1665,1613],103],"Turkey":[[900,2784,1085,1100,945,2433,699,1158,1519,898,1156,1735,670,113,1883,1156,1468,1485,974,2546,1538,714,1337,1249,1196,2100,0,322,2175,1510,1292,99,608,564,0,1083,1350,1747,1507,1414,1723,1424,1665,732,311,775,1336,1794,906,524,937,686,1629,2121,1451,2276],106],"UK":[[720,218,647,799,780,993,1120,1296,1100,1294,1237,802,575,543,941,249,1201,1705,829,603,1558,132,890,940,446,864,1301,2121,738,811,153,1466,202,639,1736,1732,1952,554,1546,2920,1298,1237,1317,1042,205,1149,506,1907,860,1470,1224,2220,626,1327,227,1119],100],"USA":[[808,808,1274,1946,1851,1824,927,1173,824,41,2219,1126,1548,394,1122,2111,973,784,1719,152,1583,160,968,590,2132,201,935,507,760,735,1458,307,3534,454,1210,1463,1344,885,2243,1269,1216,1758,1172,1273,800,435,998,994,1088,1687,750,1589,1245,1185,1033,878],112]};
+const CATS=["Bakery Items","Beverages","Dairy Products","Frozen Food","Fruits & Vegetables","Grains & Cereals","Meat & Seafood","Prepared Food"],COL=["#d9a45b","#5aa9c4","#e3d28a","#8fb4d9","#6fb98f","#b89a6a","#cf7d7d","#a58bc9"],YRS=[2018,2019,2020,2021,2022,2023,2024];
+// County: [population in thousands, tile column, tile row]
+const NJ={Sussex:[145,2,0],Passaic:[524,3,0],Bergen:[955,4,0],Warren:[110,1,1],Morris:[510,2,1],Essex:[863,3,1],Hudson:[724,4,1],Hunterdon:[129,1,2],Somerset:[345,2,2],Union:[575,3,2],Mercer:[387,1,3],Middlesex:[863,2,3],Monmouth:[643,3,3],Gloucester:[303,0,4],Camden:[523,1,4],Burlington:[466,2,4],Ocean:[637,3,4],Salem:[64,0,5],Cumberland:[153,1,5],Atlantic:[275,2,5],"Cape May":[95,2,6]};
+const WL={Canada:[1,0],UK:[3,0],Russia:[5,0],Japan:[7,0],USA:[1,1],France:[3,1],Germany:[4,1],Turkey:[5,1],China:[6,1],"South Korea":[7,1],Mexico:[1,2],Spain:[3,2],Italy:[4,2],"Saudi Arabia":[5,2],India:[6,2],Brazil:[2,3],"South Africa":[4,3],Indonesia:[6,3],Argentina:[2,4],Australia:[7,4]};
+const LL={Sussex:[41.14,-74.69],Warren:[40.86,-75.0],Passaic:[41.03,-74.3],Bergen:[40.96,-74.07],Morris:[40.86,-74.54],Essex:[40.79,-74.25],Hudson:[40.73,-74.08],Hunterdon:[40.57,-74.91],Somerset:[40.57,-74.62],Union:[40.66,-74.31],Mercer:[40.28,-74.7],Middlesex:[40.44,-74.41],Monmouth:[40.29,-74.15],Burlington:[39.88,-74.66],Ocean:[39.87,-74.25],Camden:[39.8,-75.01],Gloucester:[39.72,-75.14],Salem:[39.57,-75.35],Cumberland:[39.33,-75.13],Atlantic:[39.47,-74.65],"Cape May":[39.1,-74.8]};
+const US=W.USA[0],USt=CATS.map((_,c)=>YRS.reduce((s,_y,y)=>s+US[y*8+c],0)),USs=USt.map(v=>v/USt.reduce((a,b)=>a+b)),USy=YRS.map((_,y)=>CATS.reduce((s,_c,c)=>s+US[y*8+c],0)),USm=USy.reduce((a,b)=>a+b)/7;
+const fac={};Object.keys(NJ).forEach((k,i)=>fac[k]=.85+((i*37)%17)/17*.35);
+
+// Disposal methods, ordered by the EPA Wasted Food Scale (best first). [name, color, base statewide share, recovered?]
+const DISP=[["Donated / food rescue","#2a9b84",.05,1],["Animal feed","#8fb45a",.03,1],["Composted","#b5893b",.07,1],["Anaerobic digestion","#5aa9c4",.05,1],["Sent down the drain","#9aa6ae",.06,0],["Waste-to-energy","#d08a4f",.20,0],["Landfill","#7a6f68",.54,0]];
+// Counties that host a waste-to-energy plant send more of their trash there instead of to landfill.
+const WTE=new Set(["Essex","Camden","Union","Warren","Gloucester"]);
+function dmix(r){const m=DISP.map(d=>d[2]);if(WTE.has(r)){m[5]=.42;m[6]=.32}return m}
+const SRC=["Household","Restaurant / food service","Grocery / retail","School / college","Hospital / institution","Farm / producer","Event / venue","Other"];
+
+// Sites: [name, type, lat, lon, town]. Approximate locations; verify before use.
+const RT={bank:["Food bank / rescue","#2a9b84","Donate surplus edible food"],ad:["Food-waste recycling","#5aa9c4","Anaerobic digestion or depackaging"],compost:["Composting","#b5893b","Food scraps and yard waste"],wte:["Waste-to-energy","#d08a4f","Trash incinerated for power"],landfill:["Landfill","#7a6f68","Last resort for trash"]};
+const RES=[["Community FoodBank of New Jersey","bank",40.6937,-74.2196,"Hillside"],["Food Bank of South Jersey","bank",39.958,-75.055,"Pennsauken"],["Fulfill (Monmouth & Ocean)","bank",40.205,-74.078,"Neptune"],["Mercer Street Friends Food Bank","bank",40.26,-74.79,"Ewing"],["NORWESCAP Food Bank","bank",40.69,-75.19,"Phillipsburg"],["Center for Food Action","bank",40.893,-73.973,"Englewood"],
+["WM CORe food-waste recycling","ad",40.655,-74.19,"Elizabeth"],["ACUA Environmental Park","compost",39.425,-74.585,"Egg Harbor Twp"],["Ag Choice Organics","compost",41.0,-74.74,"Andover"],
+["Covanta Essex","wte",40.718,-74.118,"Newark"],["Covanta Camden","wte",39.913,-75.118,"Camden"],["Covanta Union","wte",40.593,-74.258,"Rahway"],["Covanta Warren","wte",40.81,-75.0,"Oxford"],["Wheelabrator Gloucester","wte",39.865,-75.14,"Westville"],
+["Ocean County Landfill","landfill",39.98,-74.34,"Manchester"],["Middlesex County Landfill","landfill",40.43,-74.39,"East Brunswick"]];
+
+const st={s:"nj",v:"geo",m:"t",y:6,cats:new Set(CATS.map((_,i)=>i)),sel:null,logs:[],timer:null,fac:{},rOn:new Set(["bank","ad","compost"]),me:null,lf:"all"};
+try{st.logs=JSON.parse(localStorage.getItem("nexus_logs_v2")||"null")}catch(e){}
+if(!Array.isArray(st.logs)){st.logs=[];try{(JSON.parse(localStorage.getItem("nexus_logs")||"[]")).forEach(l=>st.logs.push({id:Date.now()+Math.random(),d:YRS[l.y]+"-01-01",r:l.r,c:l.c,s:SRC.length-1,m:-1,a:l.t,u:"t",t:l.t,n:"Imported from older version"}))}catch(e){}}
+const save=()=>{try{localStorage.setItem("nexus_logs_v2",JSON.stringify(st.logs))}catch(x){}};
+const $=id=>document.getElementById(id),fmt=n=>n>=1e9?(n/1e9).toFixed(2)+"B":n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(n>=1e5?0:1)+"k":n>=10||n==0?Math.round(n)+"":n.toFixed(n>=1?1:2);
+const usd=t=>"$"+fmt(t*1600);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const regs=()=>st.s=="nj"?Object.keys(NJ):Object.keys(WL);
+function cell(r,y,c){return st.s=="nj"?NJ[r][0]*112*USs[c]*(USy[y]/USm)*fac[r]:W[r][0][y*8+c]*100}
+function tons(r,y,cs){let s=0;(cs||st.cats).forEach(c=>s+=cell(r,y,c));return s}
+const logsFor=r=>st.logs.filter(l=>l.r==r&&st.cats.has(l.c));
+const recov=r=>dmix(r).reduce((s,x,i)=>s+(DISP[i][3]?x:0),0)*100;
+function val(r,y){const t=tons(r,y);if(st.m=="t")return t;if(st.m=="c")return t*1600/1e6;if(st.m=="d")return recov(r);if(st.m=="r")return logsFor(r).reduce((s,l)=>s+l.t,0);
+ if(st.s=="nj")return t/NJ[r][0];return W[r][1]*t/Math.max(1,tons(r,y,CATS.map((_,i)=>i)))}
+const unit=()=>({t:" t",p:" kg",c:" $M",d:"%",r:" t"})[st.m],MT={t:"Food waste by tons",p:"Food waste per person per year",c:"Estimated cost of wasted food",d:"Share of food waste recovered (donated, fed to animals, composted or digested)",r:"Food waste you logged (all dates)"};
+const RAMP=["#e3f1ea","#8fd0b4","#2a9b84","#0b4a52"];
+function mix(a,b,t){const h=x=>[1,3,5].map(i=>parseInt(x.substr(i,2),16));const A=h(a),B=h(b);return"#"+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,"0")).join("")}
+function ramp(t){t=Math.max(0,Math.min(1,t))*3;const i=Math.min(2,Math.floor(t));return mix(RAMP[i],RAMP[i+1],t-i)}
+function lum(h){const[a,b,c]=[1,3,5].map(i=>parseInt(h.substr(i,2),16));return(a*299+b*587+c*114)/1000}
+function miles(a,b){const R=3958.8,r=Math.PI/180,dl=(b[0]-a[0])*r,dn=(b[1]-a[1])*r,x=Math.sin(dl/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+const nearest=(from,types)=>RES.filter(s=>types.includes(s[1])).map(s=>[s,miles(from,[s[2],s[3]])]).sort((a,b)=>a[1]-b[1]);
+const stack=(m,lab)=>`<div class="stack">${m.map((x,i)=>x>0?`<div title="${DISP[i][0]} ${Math.round(x*100)}%" style="flex:${x};background:${DISP[i][1]}"></div>`:"").join("")}</div>`+(lab?`<div class="kv">${m.map((x,i)=>x>0?`<span style="--c:${DISP[i][1]}">${DISP[i][0]} ${Math.round(x*100)}%</span>`:"").join("")}</div>`:"");
+function logMix(L){const m=DISP.map(()=>0);let s=0;L.forEach(l=>{if(l.m>=0){m[l.m]+=l.t;s+=l.t}});return s?m.map(x=>x/s):null}
+
+/* ---------- Leaflet map ---------- */
+let LM=null,cLayer=null,rLayer=null,uLayer=null,meLayer=null,cMode="";
+function initMap(){
+ if(LM||typeof L=="undefined")return;
+ LM=L.map("lmap",{zoomSnap:.25,scrollWheelZoom:false,minZoom:7,maxBounds:[[38.4,-76.6],[41.9,-72.9]]}).setView([40.1,-74.6],8);
+ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(LM);
+ LM.on("click",()=>LM.scrollWheelZoom.enable());LM.on("mouseout",()=>LM.scrollWheelZoom.disable());
+ rLayer=L.layerGroup().addTo(LM);uLayer=L.layerGroup().addTo(LM);meLayer=L.layerGroup().addTo(LM);
+ fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json").then(r=>r.json()).then(us=>{
+  const g=us.objects.counties.geometries.filter(x=>String(x.id).startsWith("34"));
+  const fc=topojson.feature(us,{type:"GeometryCollection",geometries:g});
+  cLayer=L.geoJSON(fc,{style:{weight:1.2,color:"#fff",fillOpacity:.75},onEachFeature:(f,ly)=>{const r=f.properties.name;ly.on({click:()=>{st.sel=r;draw()},mouseover:e=>e.target.setStyle({weight:3}),mouseout:()=>styleMap()});ly.bindTooltip(()=>tip(r),{sticky:true})}}).addTo(LM);
+  cMode="poly";LM.fitBounds(cLayer.getBounds(),{padding:[10,10]});styleMap();
+ }).catch(()=>{cMode="dots";$("mapnote").hidden=false;$("mapnote").textContent="County boundaries couldn’t load, so counties are shown as circles at their centers.";styleMap()});
+}
+function tip(r){const R=regs(),v=val(r,st.y);return `<b>${r} County</b><br>${fmt(v)}${unit()}`}
+function styleMap(){
+ if(!LM)return;const R=regs(),v=R.map(r=>val(r,st.y)),mn=Math.min(...v),mx=Math.max(...v),c=r=>ramp((val(r,st.y)-mn)/(mx-mn||1));
+ if(cMode=="poly")cLayer.eachLayer(ly=>{const r=ly.feature.properties.name,on=r==st.sel;ly.setStyle({fillColor:c(r),fillOpacity:.78,weight:on?3.5:1.2,color:on?"#14232e":"#fff"});if(on)ly.bringToFront()});
+ else if(cMode=="dots"){if(!cLayer){cLayer=L.layerGroup().addTo(LM)}cLayer.clearLayers();R.forEach((r,i)=>{const t=(v[i]-mn)/(mx-mn||1);L.circleMarker(LL[r],{radius:8+16*Math.sqrt(t),fillColor:ramp(t),fillOpacity:.85,color:r==st.sel?"#14232e":"#fff",weight:r==st.sel?3:1}).on("click",()=>{st.sel=r;draw()}).bindTooltip(tip(r)).addTo(cLayer)})}
+ rLayer.clearLayers();RES.forEach(s=>{if(!st.rOn.has(s[1]))return;const t=RT[s[1]];L.circleMarker([s[2],s[3]],{radius:6,fillColor:t[1],fillOpacity:1,color:"#fff",weight:1.5}).bindPopup(`<b>${s[0]}</b><br>${t[0]} · ${s[4]}<br><small>${t[2]}. Location approximate.</small>`).addTo(rLayer)});
+ uLayer.clearLayers();Object.entries(st.fac).forEach(([k,l])=>{if(l.on)l.p.forEach(p=>L.circleMarker(p,{radius:4,fillColor:l.c,fillOpacity:.9,color:"#fff",weight:.6}).bindTooltip(esc(k)).addTo(uLayer))});
+ meLayer.clearLayers();if(st.me)L.circleMarker(st.me,{radius:7,fillColor:"#2f80c9",fillOpacity:1,color:"#fff",weight:2}).bindTooltip("You are here").addTo(meLayer);
+}
+
+/* ---------- Facility file loader ---------- */
+const LC=['#7b4fb3','#2f80c9','#d9962b','#c4527a','#2a9b84','#8a6d3b','#5d6b77','#d0623f'],KW=[[/colleg|univers/i,0],[/correct|prison|jail/i,1],[/farm/i,2],[/manufact/i,3]],TY=/^(type|category|sector|facility.?type|business.?type)$/i;
+const lc=n=>{const k=KW.find(x=>x[0].test(n));return LC[k?k[1]:4+Object.keys(st.fac).length%4]};
+function addPt(n,la,lo){if(!isFinite(la)||!isFinite(lo))return false;if(Math.abs(lo)>180){const x=lo,y=la;lo=x/20037508.34*180;la=Math.atan(Math.sinh(y/6378137))*180/Math.PI}if(la<38.7||la>41.5||lo<-75.7||lo>-73.8)return false;(st.fac[n]||(st.fac[n]={c:lc(n),on:true,p:[]})).p.push([la,lo]);return true}
+function csv(t){const rows=[];let r=[],c='',q=0;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=0}else c+=ch}else if(ch=='"')q=1;else if(ch==','){r.push(c);c=''}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);rows.push(r);r=[];c=''}else c+=ch}if(c||r.length){r.push(c);rows.push(r)}return rows}
+$('file').onchange=async e=>{let ok=0,bad=0,msg='';for(const f of e.target.files){let t=await f.text();if(t.charCodeAt(0)==65279)t=t.slice(1);const base=f.name.replace(/\.\w+$/,'').replace(/[_-]/g,' ');try{if(t.trim()[0]=='{'||t.trim()[0]=='['){const j=JSON.parse(t);(j.features||[]).forEach(ft=>{const g=ft.geometry,p=ft.properties||{};if(!g||g.type!='Point')return;const k=Object.keys(p).find(k=>TY.test(k));addPt(k&&p[k]?String(p[k]):base,g.coordinates[1],g.coordinates[0])?ok++:bad++})}else{const R=csv(t),h=R[0].map(x=>x.trim()),ia=h.findIndex(x=>/^(lat|latitude|y)$/i.test(x)),io=h.findIndex(x=>/^(lon|lng|long|longitude|x)$/i.test(x)),it=h.findIndex(x=>TY.test(x));if(ia<0||io<0){msg+=f.name+': no latitude/longitude columns found. ';continue}R.slice(1).forEach(r=>{addPt(it>=0&&r[it]?r[it].trim():base,+r[ia],+r[io])?ok++:bad++})}}catch(x){msg+=f.name+': could not read this file. '}}e.target.value='';$('fn').textContent=msg+ok+' facilities plotted'+(bad?', '+bad+' skipped (missing or outside New Jersey)':'')+'.';draw()};
+
+/* ---------- Render ---------- */
+function draw(){
+ const nj=st.s=="nj";if(!nj&&(st.m=="d"||st.m=="r")){st.m="t";document.querySelectorAll("[data-m]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.m=="t"))}
+ document.querySelectorAll(".njo").forEach(x=>x.style.display=nj?"":"none");
+ const R=regs(),v=R.map(r=>val(r,st.y)),mn=Math.min(...v),mx=Math.max(...v);if(!R.includes(st.sel))st.sel=R[v.indexOf(mx)];
+ $("yl").textContent=YRS[st.y];$("mt").textContent=MT[st.m]+(st.m=="r"||st.m=="d"?"":", "+YRS[st.y]);$("lo").textContent=fmt(mn)+unit();$("hi").textContent=fmt(mx)+unit();
+ $("ramp").style.background="linear-gradient(90deg,"+RAMP.join(",")+")";
+ // map or tiles
+ const geoOn=nj&&st.v=="geo"&&typeof L!="undefined";$("lmap").style.display=geoOn?"":"none";$("tiles").style.display=geoOn?"none":"grid";
+ if(geoOn){initMap();LM.invalidateSize();styleMap()}
+ else{const Lk=nj?NJ:WL,cols=nj?5:8,m=$("tiles");m.style.gridTemplateColumns="repeat("+cols+",1fr)";m.innerHTML=R.map((r,i)=>{const col=ramp((v[i]-mn)/(mx-mn||1)),x=nj?Lk[r][1]:Lk[r][0],y=nj?Lk[r][2]:Lk[r][1];
+  return `<button class="tile" data-r="${r}" aria-pressed="${r==st.sel}" style="grid-column:${x+1};grid-row:${y+1};background:${col};color:${lum(col)<140?"#fff":"#1b2a24"}"><span>${r}</span><i>${fmt(v[i])}${unit()}</i></button>`}).join("")}
+ if(nj&&st.v=="geo"&&typeof L=="undefined"){$("mapnote").hidden=false;$("mapnote").textContent="The map library couldn’t load (are you offline?), so counties are shown as tiles."}
+ // ranking
+ const ord=R.map((r,i)=>[r,v[i]]).sort((a,b)=>b[1]-a[1]);
+ $("rk").innerHTML=ord.slice(0,nj?21:20).map(([r,x])=>`<button class="rank" data-r="${r}"><span>${r}</span><u style="width:${mx?x/mx*100:0}%;background:${ramp((x-mn)/(mx-mn||1))}"></u><b>${fmt(x)}${unit()}</b></button>`).join("");
+ // headline stats
+ const T=R.reduce((s,q)=>s+tons(q,st.y),0),P=nj?Object.values(NJ).reduce((s,x)=>s+x[0],0):0,rec=nj?R.reduce((s,q)=>s+tons(q,st.y)*recov(q)/100,0)/T*100:0;
+ $("stats").innerHTML=nj?`<div class="card stat"><small>Modeled food waste, ${YRS[st.y]}</small><b>${fmt(T)} t</b></div><div class="card stat"><small>Per resident</small><b>${fmt(T/P)} kg</b></div><div class="card stat"><small>Estimated value thrown out</small><b>${usd(T)}</b></div><div class="card stat"><small>Recovered instead of trashed</small><b>${rec.toFixed(0)}%</b></div><div class="card stat"><small>Reports logged here</small><b>${st.logs.length}</b></div>`
+  :`<div class="card stat"><small>Food waste, 20 countries, ${YRS[st.y]}</small><b>${fmt(T)} t</b></div><div class="card stat"><small>Estimated value</small><b>${usd(T)}</b></div>`;
+ // detail card
+ const r=st.sel,tot=tons(r,st.y),all=CATS.map((_,c)=>cell(r,st.y,c)),sum=all.reduce((a,b)=>a+b)||1,tr=YRS.map((_,y)=>tons(r,y)),tm=Math.max(...tr),tn=Math.min(...tr);
+ const pts=tr.map((t,i)=>`${8+i*44},${50-(t-tn)/(tm-tn||1)*40}`).join(" "),chg=(tr[6]-tr[0])/(tr[0]||1)*100;
+ let extra="";
+ if(nj){const ml=logsFor(r),lm=logMix(ml),from=st.me||LL[r],rc=nearest(from,["ad","compost"])[0],fb=nearest(from,["bank"])[0];
+  extra=`<h2 style="margin-top:18px">How it’s disposed of (modeled) · ${recov(r).toFixed(0)}% recovered</h2>${stack(dmix(r),1)}`+
+  (lm?`<h2 style="margin-top:14px">From your ${ml.length} report${ml.length>1?"s":""} (${fmt(ml.reduce((s,l)=>s+l.t,0))} t)</h2>${stack(lm,1)}`:"")+
+  `<h2 style="margin-top:18px">Nearest sites ${st.me?"to you":"to the county center"}</h2><div class="kv" style="flex-direction:column;gap:4px;font-size:13px;color:var(--ink)"><span style="--c:${RT.bank[1]}">${fb[0][0]}, ${fb[0][4]} · ${fb[1].toFixed(0)} mi</span><span style="--c:${RT[rc[0][1]][1]}">${rc[0][0]}, ${rc[0][4]} · ${rc[1].toFixed(0)} mi</span></div>`}
+ $("det").innerHTML=`<h2>${r}${nj?" County":""} · ${YRS[st.y]}</h2><div class="big">${fmt(tot)} <small style="font-size:18px;font-weight:600">tons</small></div><p class="sub" style="margin-top:4px">≈ ${fmt(tot*1000*1.85)} meals thrown out · ${usd(tot)} est. cost · rank ${ord.findIndex(o=>o[0]==r)+1} of ${R.length}${st.m!="t"?" by "+({p:"per person",c:"cost",d:"recovery rate",r:"your reports"})[st.m]:""}</p>
+ <h2 style="margin-top:14px">What’s being wasted</h2><div class="stack">${all.map((x,c)=>`<div title="${CATS[c]}" style="flex:${st.cats.has(c)?x:0};background:${COL[c]}"></div>`).join("")}</div><div class="kv">${all.map((x,c)=>`<span style="--c:${COL[c]};opacity:${st.cats.has(c)?1:.45}">${CATS[c]} ${Math.round(x/sum*100)}%</span>`).join("")}</div>
+ <h2 style="margin-top:18px">2018–2024 trend (${chg>=0?"+":""}${chg.toFixed(0)}%)</h2><svg viewBox="0 0 312 58" width="100%" role="img" aria-label="Trend from 2018 to 2024"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2.5"/>${tr.map((t,i)=>`<circle cx="${8+i*44}" cy="${50-(t-tn)/(tm-tn||1)*40}" r="${i==st.y?5:2.5}" fill="${i==st.y?"var(--acc)":"var(--surf)"}" stroke="var(--acc)" stroke-width="1.5"/>`).join("")}</svg>`+extra;
+ // what-if
+ const k=+$("red").value/100;$("rv").textContent=Math.round(k*100)+"%";
+ $("wi").innerHTML=`<div><b>${fmt(T*k)}</b><small>tons kept out of bins</small></div><div><b>${fmt(T*k*1850)}</b><small>meals saved</small></div><div><b>${usd(T*k)}</b><small>est. saved</small></div>`;
+ $("lay").innerHTML=Object.entries(st.fac).map(([k,l])=>`<button class="chip" style="--c:${l.c}" data-l="${encodeURIComponent(k)}" aria-pressed="${l.on}">${esc(k)} ${l.p.length}</button>`).join("");
+ $("rlay").innerHTML=Object.entries(RT).map(([k,t])=>`<button class="chip" style="--c:${t[1]}" data-rt="${k}" aria-pressed="${st.rOn.has(k)}">${t[0]}</button>`).join("");
+ $("sub").textContent=nj?"Track how much food New Jersey wastes, where it ends up, and where it could go instead. Click a county for detail, log your own waste, and find nearby drop-off sites.":"Compare 20 countries from the global dataset. Each tile is a country, placed roughly by geography.";
+ $("foot").textContent=nj?"County figures are a modeled baseline (county population × the U.S. per-person rate and category mix from the dataset), not NJDEP county data. Disposal shares are an illustrative statewide estimate, with more waste-to-energy in counties that host a plant. Statewide context from NJDEP: about 22% of New Jersey’s municipal solid waste is food waste, and the state’s goal is a 50% cut by 2030. Cost uses an assumed $1.60/kg. Map data © OpenStreetMap contributors; county boundaries from the U.S. Census Bureau via us-atlas.":"World figures come from the dataset (5,000 records, 2018–2024). Cost uses an assumed $1.60/kg.";
+ if(nj){drawDisposal(T);drawLogs();drawRes();drawLaw()}
+}
+function drawDisposal(T){
+ $("dyr").textContent=YRS[st.y];const R=Object.keys(NJ),m=DISP.map(()=>0);R.forEach(r=>{const t=tons(r,st.y);dmix(r).forEach((x,i)=>m[i]+=x*t)});
+ const lm=logMix(st.logs);
+ $("dstate").innerHTML=`<h2 style="margin-top:6px">Statewide (modeled)</h2>${stack(m.map(x=>x/T))}<table><tbody>${DISP.map((d,i)=>`<tr><td><span class="dot" style="--c:${d[1]};display:inline-block;margin:0 6px 0 0"></span>${d[0]}</td><td class="n">${fmt(m[i])} t</td><td class="n">${Math.round(m[i]/T*100)}%</td></tr>`).join("")}</tbody></table>`+
+ (lm?`<h2 style="margin-top:16px">Your reports</h2>${stack(lm,1)}`:`<p class="note">Log waste below to compare your own disposal habits with the state’s.</p>`);
+ const S=[["Prevent","Buy, cook and serve only what’s needed","#2a9b84"],["Donate","Give safe surplus food to food banks and pantries","#3e9f86"],["Upcycle / feed animals","Turn scraps into new products or animal feed","#8fb45a"],["Compost","Turn scraps into soil","#b5893b"],["Anaerobic digestion","Turn scraps into biogas and fertilizer","#5aa9c4"],["Drain / sewer","Food ground up and washed away","#9aa6ae"],["Landfill / incineration","Lowest value; landfills release methane","#7a6f68"]];
+ $("scale").innerHTML=S.map((s,i)=>`<div style="--c:${s[2]}"><span><b>${i+1}. ${s[0]}</b></span><small>${s[1]}</small></div>`).join("");
+ $("tips").innerHTML=[["Plan and store smarter","Shop with a list, freeze leftovers, and learn that “best by” is about quality, not safety.","#2a9b84"],["Donate safe surplus","The Bill Emerson Act protects donors who give food in good faith. Contact a food bank in the list.","#3e9f86"],["Separate scraps","Ask your town or county about food-scrap drop-off or curbside collection.","#b5893b"],["Compost at home","Fruit and vegetable scraps, coffee grounds and eggshells can go into a backyard bin.","#8fb45a"],["Track it","Logging waste for a few weeks shows which foods are thrown out most.","#5aa9c4"]].map(t=>`<div style="--c:${t[2]};flex-direction:column;align-items:flex-start"><b>${t[0]}</b><small>${t[1]}</small></div>`).join("");
+}
+function drawLogs(){
+ const L=st.logs.filter(l=>st.lf=="all"||l.r==st.lf).sort((a,b)=>b.d.localeCompare(a.d)),tot=L.reduce((s,l)=>s+l.t,0),rec=L.reduce((s,l)=>s+(l.m>=0&&DISP[l.m][3]?l.t:0),0),known=L.reduce((s,l)=>s+(l.m>=0?l.t:0),0);
+ const byC=CATS.map((_,c)=>L.filter(l=>l.c==c).reduce((s,l)=>s+l.t,0)),top=byC.indexOf(Math.max(...byC));
+ $("lstats").innerHTML=`<div class="card stat"><small>Reports</small><b>${L.length}</b></div><div class="card stat"><small>Total logged</small><b>${fmt(tot*2204.62)} lb</b></div><div class="card stat"><small>Kept out of trash</small><b>${known?Math.round(rec/known*100):0}%</b></div><div class="card stat"><small>Most-wasted category</small><b style="font-size:17px">${tot?CATS[top]:"—"}</b></div>`;
+ $("lt").innerHTML=L.length?L.map(l=>`<tr><td>${esc(l.d)}</td><td>${esc(l.r)}</td><td>${esc(SRC[l.s]||"Other")}</td><td>${CATS[l.c]}</td><td>${l.m>=0?`<span class="dot" style="--c:${DISP[l.m][1]};display:inline-block;margin:0 5px 0 0"></span>${DISP[l.m][0]}`:"Not recorded"}${l.n?`<br><small style="color:var(--mut)">${esc(l.n)}</small>`:""}</td><td class="n">${+l.a} ${({lb:"lb",kg:"kg",t:"t"})[l.u]}</td><td><button class="x" data-del="${l.id}" aria-label="Delete report">×</button></td></tr>`).join(""):`<tr><td colspan="7" style="color:var(--mut)">No reports yet.</td></tr>`;
+ $("lnote").textContent=L.length?"Click a county on the map and choose “My reports” to see where your logged waste is concentrated.":"";
+}
+function drawRes(){
+ const from=st.me||LL[st.sel];
+ $("res").innerHTML=RES.map(s=>[s,miles(from,[s[2],s[3]])]).sort((a,b)=>(a[0][1]=="landfill"||a[0][1]=="wte")-(b[0][1]=="landfill"||b[0][1]=="wte")||a[1]-b[1]).map(([s,d])=>`<li><span class="dot" style="--c:${RT[s[1]][1]}"></span><div style="flex:1"><button data-site="${RES.indexOf(s)}">${s[0]}</button><small>${RT[s[1]][0]} · ${s[4]} · ${RT[s[1]][2]}</small></div><b>${d.toFixed(0)} mi</b></li>`).join("");
+ $("geon").textContent=st.me?"Sorted by distance from you.":"Sorted by distance from "+st.sel+" County.";
+}
+function drawLaw(){
+ const w=+$("gw").value||0,yr=$("gu").value=="lb"?w*52/2000:w*52,c=$("gc").value,near=nearest(LL[c],["ad","compost"])[0];
+ const big=yr>=52;
+ $("gout").innerHTML=`<div class="callout${big?" warn":""}"><b style="font-size:20px">${yr.toFixed(1)} tons/year</b><br>${big?`At or above the 52-ton threshold. If an authorized food-waste recycling facility with room for your waste is within 25 road miles, you must separate food waste and send it there (or compost or digest it on site). The nearest listed site to ${c} County is <b>${near[0][0]}</b>, about ${near[1].toFixed(0)} miles in a straight line.`:`Below the 52-ton threshold, so the recycling requirement doesn’t apply. Separating scraps and donating surplus still cuts disposal costs and emissions.`}</div><p class="note">This is an estimate, not legal advice. NJDEP decides who is covered, and businesses can apply for a waiver.</p>`;
+ const R=Object.keys(NJ),all=CATS.map((_,i)=>i),S=YRS.map((_,y)=>R.reduce((s,r)=>s+tons(r,y,all),0)),base=S[0],tgt=base/2,n=S.length,xm=(n-1)/2,ym=S.reduce((a,b)=>a+b)/n,sl=S.reduce((s,y,i)=>s+(i-xm)*(y-ym),0)/S.reduce((s,_,i)=>s+(i-xm)**2,0),p30=ym+sl*(12-xm);
+ const Y=[...S,tgt,p30],hi=Math.max(...Y)*1.08,lo=Math.min(0,...Y),X=i=>30+i*(440/12),Yp=v=>150-(v-lo)/(hi-lo)*130;
+ $("goal").innerHTML=`<svg viewBox="0 0 490 175" width="100%" role="img" aria-label="Statewide food waste 2018 to 2024 with the 2030 target"><line x1="30" x2="470" y1="${Yp(tgt)}" y2="${Yp(tgt)}" stroke="var(--bad)" stroke-dasharray="5 4"/><text x="470" y="${Yp(tgt)-6}" text-anchor="end" font-size="11" fill="var(--bad)">2030 target: ${fmt(tgt)} t</text><line x1="${X(6)}" y1="${Yp(S[6])}" x2="${X(12)}" y2="${Yp(p30)}" stroke="var(--mut)" stroke-dasharray="2 4"/><polyline points="${S.map((v,i)=>X(i)+","+Yp(v)).join(" ")}" fill="none" stroke="var(--acc)" stroke-width="2.5"/>${S.map((v,i)=>`<circle cx="${X(i)}" cy="${Yp(v)}" r="3" fill="var(--acc)"/>`).join("")}<circle cx="${X(12)}" cy="${Yp(p30)}" r="4" fill="none" stroke="var(--mut)" stroke-width="1.5"/>${[0,6,12].map(i=>`<text x="${X(i)}" y="170" text-anchor="middle" font-size="11" fill="var(--mut)">${2018+i}</text>`).join("")}</svg>
+ <p class="sub">Modeled 2024 waste is <b>${Math.abs((S[6]/base-1)*100).toFixed(0)}% ${S[6]<base?"below":"above"}</b> 2018. If the 2018–2024 trend continues, New Jersey reaches about <b>${fmt(p30)} t</b> in 2030, ${p30<=tgt?"meeting":"short of"} the target${p30>tgt?` by ${fmt(p30-tgt)} t`:""}.</p><p class="note">Uses 2018, the earliest year in the dataset, as the baseline. The law’s official baseline is 2017.</p>`;
+}
+
+/* ---------- Setup & events ---------- */
+$("chips").innerHTML=CATS.map((c,i)=>`<button class="chip" style="--c:${COL[i]}" data-c="${i}" aria-pressed="true">${c}</button>`).join("");
+const opts=a=>a.map((x,i)=>`<option value="${i}">${x}</option>`).join(""),cty=Object.keys(NJ).sort().map(k=>`<option>${k}</option>`).join("");
+$("lr").innerHTML=cty;$("gc").innerHTML=cty;$("gc").value="Middlesex";$("lc").innerHTML=opts(CATS);$("ls").innerHTML=opts(SRC);$("lm").innerHTML=opts(DISP.map(d=>d[0]));$("lm").value=6;
+$("lfc").innerHTML=`<option value="all">All counties</option>`+cty;
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};$("ld").value=today();
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+ if(b.dataset.r){st.sel=b.dataset.r}
+ else if(b.dataset.s){st.s=b.dataset.s;st.sel=null;document.querySelectorAll("[data-s]").forEach(x=>x.setAttribute("aria-pressed",x==b))}
+ else if(b.dataset.l){const l=st.fac[decodeURIComponent(b.dataset.l)];l.on=!l.on}
+ else if(b.dataset.rt){const k=b.dataset.rt;st.rOn.has(k)?st.rOn.delete(k):st.rOn.add(k)}
+ else if(b.dataset.site){const s=RES[+b.dataset.site];if(st.v!="geo"){st.v="geo";document.querySelectorAll("[data-v]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.v=="geo"))}st.rOn.add(s[1]);draw();$("dash").scrollIntoView();if(LM){LM.setView([s[2],s[3]],12);rLayer.eachLayer(m=>{const p=m.getLatLng();if(p.lat==s[2]&&p.lng==s[3])m.openPopup()})}return}
+ else if(b.dataset.del){if(!confirm("Delete this report?"))return;st.logs=st.logs.filter(l=>String(l.id)!=b.dataset.del);save()}
+ else if(b.dataset.v){st.v=b.dataset.v;document.querySelectorAll("[data-v]").forEach(x=>x.setAttribute("aria-pressed",x==b))}
+ else if(b.dataset.m){st.m=b.dataset.m;document.querySelectorAll("[data-m]").forEach(x=>x.setAttribute("aria-pressed",x==b))}
+ else if(b.dataset.c){const c=+b.dataset.c;if(st.cats.has(c)&&st.cats.size>1)st.cats.delete(c);else st.cats.add(c);b.setAttribute("aria-pressed",st.cats.has(c))}
+ else if(b.id=="play"){if(st.timer){clearInterval(st.timer);st.timer=null;b.textContent="Play";return}b.textContent="Pause";st.y=-1;st.timer=setInterval(()=>{st.y++;$("yr").value=st.y;draw();if(st.y>=6){clearInterval(st.timer);st.timer=null;b.textContent="Play"}},900);return}
+ else if(b.id=="geo"){if(!navigator.geolocation){$("geon").textContent="Location isn’t available in this browser.";return}$("geon").textContent="Finding you…";navigator.geolocation.getCurrentPosition(p=>{st.me=[p.coords.latitude,p.coords.longitude];draw()},()=>{$("geon").textContent="Couldn’t get your location. Results use the selected county instead."});return}
+ else if(b.id=="exp"){const h=["date","county","source","category","disposal","amount","unit","tonnes","note"],q=x=>'"'+String(x).replace(/"/g,'""')+'"';const t=[h.join(",")].concat(st.logs.map(l=>[l.d,l.r,SRC[l.s],CATS[l.c],l.m>=0?DISP[l.m][0]:"Not recorded",l.a,l.u,l.t.toFixed(4),l.n||""].map(q).join(","))).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([t],{type:"text/csv"}));a.download="scrap-nexus-reports-"+today()+".csv";a.click();URL.revokeObjectURL(a.href);return}
+ else if(b.id=="clr"){if(!st.logs.length||!confirm("Delete all "+st.logs.length+" reports saved in this browser? Export them first if you want a copy."))return;st.logs=[];save()}
+ else return;draw()});
+$("yr").oninput=e=>{st.y=+e.target.value;draw()};$("red").oninput=draw;$("lfc").onchange=e=>{st.lf=e.target.value;drawLogs()};
+["gw","gu","gc"].forEach(id=>$(id).oninput=drawLaw);
+const toT=(a,u)=>u=="lb"?a/2204.62:u=="kg"?a/1000:a;
+$("lf").onsubmit=e=>{e.preventDefault();const a=+$("la").value,u=$("lu").value;st.logs.push({id:Date.now(),d:$("ld").value,r:$("lr").value,s:+$("ls").value,c:+$("lc").value,m:+$("lm").value,a,u,t:toT(a,u),n:$("ln").value.trim()});save();st.sel=$("lr").value;$("la").value="";$("ln").value="";draw()};
+$("imp").onchange=async e=>{const f=e.target.files[0];if(!f)return;const R=csv((await f.text()).replace(/^﻿/,"")).filter(r=>r.length>5),h=R.shift().map(x=>x.trim().toLowerCase()),ix=k=>h.indexOf(k);let n=0;
+ R.forEach((r,i)=>{const g=k=>(r[ix(k)]||"").trim(),cn=g("county"),c=CATS.indexOf(g("category")),a=+g("amount"),u=["lb","kg","t"].includes(g("unit"))?g("unit"):"lb";if(!NJ[cn]||c<0||!(a>0))return;st.logs.push({id:Date.now()+i,d:g("date")||today(),r:cn,s:Math.max(0,SRC.indexOf(g("source"))),c,m:DISP.findIndex(d=>d[0]==g("disposal")),a,u,t:toT(a,u),n:g("note")});n++});
+ e.target.value="";save();draw();alert(n+" report"+(n==1?"":"s")+" imported.")};
+draw();
+</script></body></html>
